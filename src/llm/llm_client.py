@@ -92,16 +92,16 @@ class LLMClient:
         """Build the prompt for the LLM."""
         return f"""Based on the following information from the knowledge base:
 
-{context}
-
-User's question: {query}
-
-Instructions:
-- Answer using ONLY the information provided above
-- If the information doesn't contain the answer, say: "{self.NOT_FOUND_MESSAGE}"
-- Be concise and accurate
-- Synthesize information from multiple matches if relevant
-"""
+        {context}
+        
+        User's question: {query}
+        
+        Instructions:
+        - Answer using ONLY the information provided above
+        - If the information doesn't contain the answer, say: "{self.NOT_FOUND_MESSAGE}"
+        - Be concise and accurate
+        - Synthesize information from multiple matches if relevant
+        """
     
     def generate(self, query: str, context: str) -> Dict[str, Any]:
         """
