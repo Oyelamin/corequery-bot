@@ -315,11 +315,45 @@ uvicorn main:app --port 8001
 - **LLM**: Ollama (local, free)
 - **Typical Response Time**: 1-3 seconds
 
+## Contributing
+
+🤝 **This project is open for collaboration!** 
+
+We welcome contributions, suggestions, and improvements. Whether you want to:
+- Add new features
+- Fix bugs
+- Improve documentation
+- Optimize performance
+- Suggest enhancements
+
+Feel free to:
+- Open an issue to discuss ideas
+- Submit a pull request
+- Share feedback and suggestions
+
+### How to Contribute
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Author & Contact
+
+**Blessing Ajala - Software Engineer**
+
+- 👨‍💻 **GitHub**: [@Oyelamin](https://github.com/Oyelamin)
+- 💼 **LinkedIn**: [blessphp](https://www.linkedin.com/in/blessphp/)
+- 🐦 **Twitter**: [@Blessin06147308](https://x.com/Blessin06147308)
+
+Feel free to reach out for questions, collaborations, or just to say hello! 😊
+
 ## License
 
 MIT
 
 ## Support
 
-For issues or questions, please check the logs in the `logs/` directory.
+For issues or questions, please check the logs in the `logs/` directory or open an issue on GitHub.
 
