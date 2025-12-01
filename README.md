@@ -28,7 +28,7 @@ A minimal RAG-based AI agent that allows you to query structured CSV/Excel data 
 
 1. **Clone and navigate to the project:**
    ```bash
-   cd cchub-corequery-bot
+   cd corequery-bot
    ```
 
 2. **Create virtual environment:**
@@ -201,7 +201,7 @@ This will:
 ## Project Structure
 
 ```
-cchub-corequery-bot/
+corequery-bot/
 ├── src/
 │   ├── __init__.py
 │   ├── config.py              # Configuration
