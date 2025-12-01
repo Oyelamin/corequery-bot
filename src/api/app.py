@@ -2,6 +2,11 @@
 FastAPI application for Core Query Bot.
 
 Defines all API routes and request handling.
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 import os

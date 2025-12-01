@@ -2,6 +2,11 @@
 Custom exceptions for the Core Query Bot.
 
 Provides specific exception types for better error handling and debugging.
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 from typing import Optional

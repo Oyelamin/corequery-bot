@@ -3,6 +3,11 @@ Configuration management for the AI agent.
 
 This module handles all configuration settings loaded from environment variables.
 Directories are created lazily when needed, not at import time.
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 import os

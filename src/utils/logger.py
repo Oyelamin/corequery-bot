@@ -2,6 +2,11 @@
 Logging configuration for the Core Query Bot.
 
 Provides a centralized logging setup with console and file handlers.
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 import logging

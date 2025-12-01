@@ -2,6 +2,11 @@
 Embedding generation and vector database storage.
 
 Handles embedding model initialization, vector generation, and ChromaDB operations.
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 import json

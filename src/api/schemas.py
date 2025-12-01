@@ -2,6 +2,11 @@
 Pydantic schemas for API request/response models.
 
 Provides validation and serialization for API data.
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 from typing import Any, Dict, List, Optional

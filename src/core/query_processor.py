@@ -2,6 +2,11 @@
 Query processing and semantic search.
 
 Handles query validation, embedding generation, and similarity search.
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 import time

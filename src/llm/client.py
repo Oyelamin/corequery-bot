@@ -2,6 +2,11 @@
 LLM client for Ollama integration.
 
 Provides a client for communicating with the Ollama API.
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 import time

@@ -3,6 +3,11 @@ Entry point for Core Query Bot FastAPI application.
 
 Run with: python main.py
 Or: uvicorn src.api.app:app --reload
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 import uvicorn

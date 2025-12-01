@@ -2,6 +2,11 @@
 Main agent orchestration class.
 
 Coordinates all components to process queries and generate responses.
+
+Author: Blessing Ajala - Software Engineer
+GitHub: https://github.com/Oyelamin
+LinkedIn: https://www.linkedin.com/in/blessphp/
+Twitter: @Blessin06147308
 """
 
 from pathlib import Path
