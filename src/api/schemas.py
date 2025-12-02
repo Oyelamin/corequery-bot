@@ -19,6 +19,7 @@ class QueryRequest(BaseModel):
     
     query: str = Field(..., min_length=2, max_length=1000, description="User query string")
     include_metrics: bool = Field(default=True, description="Include performance metrics in response")
+    session_id: Optional[str] = Field(None, description="Session ID for conversation history")
     
     @field_validator("query")
     @classmethod
@@ -55,6 +56,27 @@ class QueryResponse(BaseModel):
     matches_found: int = Field(..., ge=0)
     meets_threshold: bool
     metrics: Optional[Dict[str, Any]] = None
+    session_id: Optional[str] = Field(None, description="Session ID used for this query")
+
+
+class WebSocketMessage(BaseModel):
+    """WebSocket message model."""
+    type: str = Field(..., description="Message type: 'query', 'clear_history', 'ping'")
+    query: Optional[str] = Field(None, description="User query (for 'query' type)")
+    session_id: str = Field(..., description="Session identifier")
+    include_metrics: bool = Field(False, description="Whether to include metrics")
+
+
+class WebSocketResponse(BaseModel):
+    """WebSocket response model."""
+    type: str = Field(..., description="Response type: 'response', 'error', 'pong', 'connected'")
+    query: Optional[str] = Field(None, description="Original query")
+    response: Optional[str] = Field(None, description="Agent response")
+    status: Optional[str] = Field(None, description="Response status")
+    session_id: Optional[str] = Field(None, description="Session ID")
+    error: Optional[str] = Field(None, description="Error message if type is 'error'")
+    metrics: Optional[Dict[str, Any]] = Field(None, description="Performance metrics")
+    message: Optional[str] = Field(None, description="Additional message (e.g., for 'connected' type)")
 
 
 class IndexResponse(BaseModel):

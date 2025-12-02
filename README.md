@@ -6,10 +6,13 @@ A minimal RAG-based AI agent that allows you to query structured CSV/Excel data 
 
 - 🔍 **Semantic Search**: Uses embeddings for intelligent data retrieval
 - 🤖 **Local LLM**: Powered by Ollama (completely free)
+- 💬 **Conversational AI**: Maintains conversation history for natural follow-up questions
+- 🔌 **WebSocket Support**: Real-time bidirectional communication with session management
 - 📊 **Performance Tracking**: Monitor query performance and metrics
 - 🚫 **Smart Filtering**: Automatically detects when information is not available
 - 🚀 **FastAPI API**: RESTful API with automatic documentation
 - 💾 **Persistent Storage**: ChromaDB for vector storage
+- 🎯 **Session Management**: Track conversations per device/session ID
 
 ## Architecture
 
@@ -139,10 +142,27 @@ response = requests.post(
 )
 print(response.json())
 
-# Query
+# Query (with session_id for conversation history)
+session_id = "my-device-123"  # Use same ID for follow-up conversations
+
 response = requests.post(
     "http://localhost:8000/query",
-    json={"query": "What products are available?", "include_metrics": True}
+    json={
+        "query": "What products are available?",
+        "include_metrics": True,
+        "session_id": session_id
+    }
+)
+print(response.json())
+
+# Follow-up query (AI remembers previous conversation)
+response = requests.post(
+    "http://localhost:8000/query",
+    json={
+        "query": "Which ones are under $50?",  # Follow-up question
+        "include_metrics": False,
+        "session_id": session_id  # Same session_id
+    }
 )
 print(response.json())
 ```
@@ -150,6 +170,146 @@ print(response.json())
 #### Using the Interactive Docs:
 
 Visit http://localhost:8000/docs for an interactive API documentation where you can test all endpoints directly.
+
+### Conversational Queries with Session ID
+
+The API supports conversational queries by maintaining conversation history per session. Use the same `session_id` across multiple queries to enable follow-up conversations:
+
+```python
+import requests
+
+# First query
+response = requests.post(
+    "http://localhost:8000/query",
+    json={
+        "query": "How do I create an account?",
+        "session_id": "my-device-123",  # Unique session ID
+        "include_metrics": False
+    }
+)
+print(response.json()["response"])
+
+# Follow-up query (AI remembers previous conversation)
+response = requests.post(
+    "http://localhost:8000/query",
+    json={
+        "query": "What if I forget my password?",  # Follow-up question
+        "session_id": "my-device-123",  # Same session ID
+        "include_metrics": False
+    }
+)
+print(response.json()["response"])  # AI will reference previous conversation
+```
+
+#### Using WebSocket (Real-time Conversational):
+
+For real-time conversational queries with context awareness, use the WebSocket endpoint:
+
+```python
+import asyncio
+import json
+import websockets
+
+async def chat():
+    session_id = "your-device-id-or-uuid"  # Unique identifier for your device/session
+    uri = f"ws://localhost:8000/ws?session_id={session_id}"
+    
+    async with websockets.connect(uri) as websocket:
+        # Wait for connection confirmation
+        response = await websocket.recv()
+        print(response)
+        
+        # Send a query
+        message = {
+            "type": "query",
+            "query": "How do I create an account?",
+            "session_id": session_id,
+            "include_metrics": False
+        }
+        await websocket.send(json.dumps(message))
+        
+        # Receive response
+        response = await websocket.recv()
+        data = json.loads(response)
+        print(f"Bot: {data['response']}")
+        
+        # Send follow-up query (will have access to previous conversation)
+        message = {
+            "type": "query",
+            "query": "What if I forget my password?",
+            "session_id": session_id
+        }
+        await websocket.send(json.dumps(message))
+        
+        response = await websocket.recv()
+        data = json.loads(response)
+        print(f"Bot: {data['response']}")
+
+asyncio.run(chat())
+```
+
+**WebSocket Message Types:**
+
+- `query`: Send a query to the bot
+  ```json
+  {
+    "type": "query",
+    "query": "Your question here",
+    "session_id": "your-session-id",
+    "include_metrics": false
+  }
+  ```
+
+- `clear_history`: Clear conversation history for the session
+  ```json
+  {
+    "type": "clear_history",
+    "session_id": "your-session-id"
+  }
+  ```
+
+- `ping`: Check connection (server responds with `pong`)
+  ```json
+  {
+    "type": "ping",
+    "session_id": "your-session-id"
+  }
+  ```
+
+**Example Client:**
+
+See `examples/websocket_client.py` for a complete interactive WebSocket client example.
+
+Run it with:
+```bash
+python examples/websocket_client.py [session_id]
+```
+
+### Conversation History & Follow-ups
+
+The bot maintains conversation history per `session_id`, enabling natural follow-up conversations:
+
+**Features:**
+- ✅ Maintains last 10 messages per session
+- ✅ Natural reference to previous conversations
+- ✅ Context-aware responses
+- ✅ Session-based conversation tracking
+- ✅ Auto-cleanup of inactive sessions (1 hour timeout)
+
+**Example Conversation Flow:**
+
+```
+User: "How do I create an account?"
+Bot: "Great question! To create an account, you can click 'Sign Up' on the homepage..."
+
+User: "What if I forget my password?"
+Bot: "Sure! If you forget your password, click 'Forgot Password?' on the login page..."
+
+User: "How long does that take?"
+Bot: "The password reset process is instant! You'll receive a reset link right away..."
+```
+
+The bot will naturally reference previous messages and build on the conversation context.
 
 ## Configuration
 
@@ -214,7 +374,8 @@ corequery-bot/
 │   ├── core/                  # Core business logic
 │   │   ├── __init__.py
 │   │   ├── agent.py          # Main orchestrator
-│   │   └── query_processor.py # Semantic search
+│   │   ├── query_processor.py # Semantic search
+│   │   └── session_manager.py # Conversation history management
 │   │
 │   ├── data/                  # Data processing
 │   │   ├── __init__.py

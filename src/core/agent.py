@@ -20,6 +20,7 @@ from src.llm.client import LLMClient
 from src.utils.logger import logger
 from src.utils.performance import PerformanceTracker
 from src.core.query_processor import QueryProcessor
+from src.core.session_manager import session_manager
 
 
 class QueryAgent:
@@ -129,7 +130,8 @@ class QueryAgent:
     def query(
         self, 
         user_query: str, 
-        include_metrics: bool = True
+        include_metrics: bool = True,
+        session_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Process a user query and generate a response.
@@ -137,6 +139,7 @@ class QueryAgent:
         Args:
             user_query: The user's question
             include_metrics: Whether to include performance metrics
+            session_id: Optional session ID for conversation history
             
         Returns:
             Dictionary with response and metadata
@@ -154,16 +157,30 @@ class QueryAgent:
         # Process query
         query_result = self._query_processor.process(user_query)
         
+        # Get conversation history if session ID provided
+        conversation_history = None
+        if session_id:
+            conversation_history = session_manager.get_history(session_id, max_messages=10)
+        
         # Determine response
         if not query_result.meets_threshold:
             response_text = self._llm_client.get_not_found_response()
             status = "not_found"
             llm_time = 0.0
         else:
-            llm_result = self._llm_client.generate(user_query, query_result.context)
+            llm_result = self._llm_client.generate(
+                user_query, 
+                query_result.context,
+                conversation_history=conversation_history
+            )
             response_text = llm_result["response"]
             llm_time = llm_result["generation_time"]
             status = "success"
+        
+        # Store messages in session history if session ID provided
+        if session_id:
+            session_manager.add_message(session_id, "user", user_query)
+            session_manager.add_message(session_id, "assistant", response_text)
         
         # Create metrics
         metrics = self._performance_tracker.create_metrics(

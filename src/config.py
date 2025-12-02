@@ -142,7 +142,7 @@ class APIConfig:
     title: str = "Core Query Bot API"
     version: str = "1.0.0"
     description: str = "AI Agent for querying structured CSV/Excel data using RAG"
-    allowed_origins: List[str] = field(default_factory=lambda: _get_env_list("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000") or [])
+    allowed_origins: List[str] = field(default_factory=lambda: _get_env_list("ALLOWED_ORIGINS") or ["*"])
 
 
 @dataclass
