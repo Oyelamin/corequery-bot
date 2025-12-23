@@ -96,6 +96,9 @@ class StatusResponse(BaseModel):
     embedding_model: str
     llm_model: str
     chunks_count: Optional[int] = Field(None, ge=0)
+    indexed_file: Optional[str] = Field(None, description="Name of the currently indexed file")
+    indexed_file_path: Optional[str] = Field(None, description="Full path of the indexed file")
+    indexed_at: Optional[str] = Field(None, description="Timestamp when the file was indexed")
 
 
 class HealthResponse(BaseModel):

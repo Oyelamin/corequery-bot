@@ -104,7 +104,8 @@ class QueryProcessor:
     def search(
         self, 
         query_embedding: List[float], 
-        top_k: Optional[int] = None
+        top_k: Optional[int] = None,
+        query_text: Optional[str] = None
     ) -> Tuple[List[Dict[str, Any]], float]:
         """
         Search for similar content in vector database.
@@ -112,6 +113,7 @@ class QueryProcessor:
         Args:
             query_embedding: Query embedding vector
             top_k: Number of results to return
+            query_text: Original query text (for exact matching on short queries)
             
         Returns:
             Tuple of (matches list, max similarity score)
@@ -124,29 +126,72 @@ class QueryProcessor:
             logger.warning("Collection is empty")
             return [], 0.0
         
+        # For very short queries (1-2 words), get more results to improve matching
+        # This helps with greetings and simple queries
+        if query_text:
+            query_words = query_text.strip().lower().split()
+            if len(query_words) <= 2:
+                # Get more results for short queries to find better matches
+                top_k = min(top_k * 2, count)
+        
         # Search
         results = self._collection.query(
             query_embeddings=[query_embedding],
             n_results=min(top_k, count)
         )
         
-        return self._format_results(results)
+        return self._format_results(results, query_text=query_text)
     
     def _format_results(
         self, 
-        results: Dict[str, Any]
+        results: Dict[str, Any],
+        query_text: Optional[str] = None
     ) -> Tuple[List[Dict[str, Any]], float]:
-        """Format ChromaDB results into match dictionaries."""
+        """
+        Format ChromaDB results into match dictionaries.
+        
+        Args:
+            results: ChromaDB query results
+            query_text: Original query text for exact matching boost
+        """
         matches = []
         max_score = 0.0
         
         if not results.get("ids") or not results["ids"][0]:
             return matches, max_score
         
+        query_lower = query_text.lower().strip() if query_text else ""
+        
         for i in range(len(results["ids"][0])):
-            # Convert distance to similarity (ChromaDB uses L2 distance by default)
+            # ChromaDB uses cosine distance (0 = identical, 2 = opposite)
+            # Convert to similarity: similarity = 1 - (distance / 2)
+            # This gives us a 0-1 similarity score where 1 = identical
             distance = results["distances"][0][i] if results.get("distances") else 0
-            similarity = max(0.0, 1.0 - distance)
+            # Cosine distance ranges from 0 to 2, convert to similarity (0 to 1)
+            similarity = max(0.0, 1.0 - (distance / 2.0))
+            
+            # Boost similarity for exact matches in Question field (for short queries)
+            if query_text and len(query_text.split()) <= 2:
+                document_text = results["documents"][0][i].lower()
+                metadata = results["metadatas"][0][i] if results.get("metadatas") else {}
+                
+                # Check if query appears in Question field (from original_data)
+                if metadata.get("original_data"):
+                    try:
+                        import json
+                        original_data = json.loads(metadata.get("original_data", "{}"))
+                        question = original_data.get("Question", "").lower()
+                        if query_lower in question or question in query_lower:
+                            # Boost similarity for exact/partial matches in Question
+                            similarity = min(1.0, similarity + 0.2)
+                            logger.debug(f"Boosted similarity for query '{query_text}' in Question field")
+                    except (json.JSONDecodeError, AttributeError):
+                        pass
+                
+                # Also check if query appears directly in document text
+                if query_lower in document_text:
+                    similarity = min(1.0, similarity + 0.15)
+            
             max_score = max(max_score, similarity)
             
             matches.append({
@@ -191,13 +236,24 @@ class QueryProcessor:
         query_embedding = self.generate_embedding(query)
         embedding_time = time.perf_counter() - embed_start
         
-        # Search
+        # Search (pass query text for exact matching on short queries)
         search_start = time.perf_counter()
-        matches, max_score = self.search(query_embedding)
+        matches, max_score = self.search(query_embedding, query_text=query)
         search_time = time.perf_counter() - search_start
         
-        # Check threshold
-        meets_threshold = max_score >= self._threshold
+        # Check threshold with special handling for short queries
+        # Short queries (like "Hello", "Hi") may have lower similarity scores
+        # but should still be processed if they have any matches
+        query_length = len(query.split())
+        if query_length <= 2 and matches:
+            # For very short queries (1-2 words), use a lower threshold
+            # This helps with greetings and simple queries
+            adjusted_threshold = max(0.3, self._threshold - 0.3)
+            meets_threshold = max_score >= adjusted_threshold
+            if meets_threshold:
+                logger.debug(f"Short query '{query}' matched with adjusted threshold {adjusted_threshold:.2f}")
+        else:
+            meets_threshold = max_score >= self._threshold
         
         # Format context
         context = self.format_context(matches) if matches else ""

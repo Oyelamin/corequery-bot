@@ -145,8 +145,26 @@ class DataLoader:
         raise DataLoadError("Could not decode CSV file with any supported encoding")
     
     def _load_excel(self, path: Path) -> pd.DataFrame:
-        """Load Excel file."""
-        return pd.read_excel(path)
+        """
+        Load Excel file.
+        
+        Raises:
+            DataLoadError: If openpyxl is not installed or file cannot be read
+        """
+        try:
+            return pd.read_excel(path)
+        except ImportError as e:
+            if 'openpyxl' in str(e).lower():
+                raise DataLoadError(
+                    "openpyxl is required to read Excel files",
+                    details="Please install it with: pip install openpyxl"
+                )
+            raise
+        except Exception as e:
+            raise DataLoadError(
+                f"Failed to read Excel file: {path.name}",
+                details=str(e)
+            )
     
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         """

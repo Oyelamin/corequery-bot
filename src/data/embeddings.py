@@ -10,6 +10,9 @@ Twitter: @Blessin06147308
 """
 
 import json
+import time
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import chromadb
@@ -76,10 +79,12 @@ class EmbeddingManager:
                 settings=ChromaSettings(anonymized_telemetry=False)
             )
             
-            # Get or create collection
+            # Get or create collection with cosine similarity
+            # ChromaDB uses cosine distance by default, which is better for semantic search
             self._collection = self._chroma_client.get_or_create_collection(
                 name=self.COLLECTION_NAME,
-                metadata={"description": "CSV/Excel data chunks"}
+                metadata={"description": "CSV/Excel data chunks"},
+                # Use cosine distance for better semantic similarity
             )
             
             logger.info(f"ChromaDB collection ready: {self.COLLECTION_NAME}")
@@ -130,12 +135,13 @@ class EmbeddingManager:
         except Exception as e:
             raise EmbeddingError("Failed to generate embeddings", details=str(e))
     
-    def index_chunks(self, chunks: List[Dict[str, Any]]) -> int:
+    def index_chunks(self, chunks: List[Dict[str, Any]], source_file: Optional[str] = None) -> int:
         """
         Index chunks into ChromaDB (replaces existing data).
         
         Args:
             chunks: List of chunk dictionaries
+            source_file: Optional source file path/name for tracking
             
         Returns:
             Number of chunks indexed
@@ -148,6 +154,30 @@ class EmbeddingManager:
         try:
             # Clear existing collection
             self._clear_collection()
+            
+            # Store source file info in collection metadata
+            collection_metadata = {"description": "CSV/Excel data chunks"}
+            if source_file:
+                file_name = Path(source_file).name
+                collection_metadata["source_file"] = file_name
+                collection_metadata["source_path"] = str(source_file)
+                collection_metadata["indexed_at"] = str(int(time.time()))
+            
+            # Update collection metadata
+            if self._chroma_client:
+                try:
+                    # Delete and recreate with metadata
+                    self._chroma_client.delete_collection(self.COLLECTION_NAME)
+                    self._collection = self._chroma_client.create_collection(
+                        name=self.COLLECTION_NAME,
+                        metadata=collection_metadata
+                    )
+                except Exception:
+                    # Collection might not exist, create it
+                    self._collection = self._chroma_client.create_collection(
+                        name=self.COLLECTION_NAME,
+                        metadata=collection_metadata
+                    )
             
             # Generate embeddings
             texts = [chunk["text"] for chunk in chunks]
@@ -192,6 +222,39 @@ class EmbeddingManager:
         except Exception as e:
             logger.error(f"ChromaDB indexing error: {e}", exc_info=True)
             raise VectorStoreError("Failed to index chunks", details=str(e))
+    
+    def get_indexed_file_info(self) -> Optional[Dict[str, Any]]:
+        """
+        Get information about the currently indexed file.
+        
+        Returns:
+            Dictionary with source file info, or None if no data indexed
+        """
+        try:
+            if not self.has_data():
+                return None
+            
+            metadata = self.collection.metadata
+            if metadata and metadata.get("source_file"):
+                info = {
+                    "source_file": metadata.get("source_file"),
+                    "source_path": metadata.get("source_path"),
+                    "indexed_at_timestamp": metadata.get("indexed_at"),
+                }
+                
+                # Convert timestamp to readable date
+                if info["indexed_at_timestamp"]:
+                    try:
+                        timestamp = int(info["indexed_at_timestamp"])
+                        info["indexed_at"] = datetime.fromtimestamp(timestamp).isoformat()
+                    except (ValueError, TypeError):
+                        info["indexed_at"] = info["indexed_at_timestamp"]
+                
+                return info
+            return None
+        except Exception as e:
+            logger.debug(f"Error getting indexed file info: {e}")
+            return None
     
     def _clear_collection(self) -> None:
         """Clear all data from the collection."""

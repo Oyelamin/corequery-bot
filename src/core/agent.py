@@ -62,25 +62,32 @@ class QueryAgent:
         )
         
         # Auto-index if configured
-        if not self._embedding_manager.has_data():
-            auto_index_file = settings.data.auto_index_file
-            if auto_index_file:
-                auto_index_path = Path(auto_index_file)
-                if not auto_index_path.is_absolute():
-                    # Relative to project root
-                    auto_index_path = settings.paths.base_dir / auto_index_file
-                
-                if auto_index_path.exists():
+        auto_index_file = settings.data.auto_index_file
+        if auto_index_file:
+            auto_index_path = Path(auto_index_file)
+            if not auto_index_path.is_absolute():
+                # Relative to project root
+                auto_index_path = settings.paths.base_dir / auto_index_file
+            
+            if auto_index_path.exists():
+                # Check if we should re-index (only if no data exists)
+                if not self._embedding_manager.has_data():
                     logger.info(f"Auto-indexing configured file: {auto_index_path}")
                     try:
                         result = self.index_data(str(auto_index_path))
                         logger.info(f"Auto-indexing completed: {result.get('chunks_indexed', 0)} chunks indexed")
                     except Exception as e:
                         logger.error(f"Auto-indexing failed: {e}", exc_info=True)
+                        logger.error("Please check the error above and ensure all dependencies are installed (e.g., openpyxl for Excel files)")
                 else:
-                    logger.warning(f"Auto-index file not found: {auto_index_path}")
+                    logger.info(f"Data already indexed ({self._embedding_manager.get_collection_count()} chunks). Skipping auto-index.")
+                    logger.info(f"To re-index '{auto_index_path.name}', clear existing data first or use the /index endpoint.")
             else:
-                logger.warning("No data indexed. Please index a CSV/Excel file first.")
+                logger.warning(f"Auto-index file not found: {auto_index_path}")
+                logger.warning("Please check your .env file and ensure AUTO_INDEX_FILE path is correct.")
+        else:
+            if not self._embedding_manager.has_data():
+                logger.warning("No data indexed and AUTO_INDEX_FILE not configured. Please index a CSV/Excel file first.")
         
         if not self._llm_client.check_health():
             logger.warning("Ollama is not running. LLM features unavailable.")
@@ -109,8 +116,8 @@ class QueryAgent:
         # Load and process data
         chunks = self._data_loader.load_and_process(file_path)
         
-        # Index chunks
-        count = self._embedding_manager.index_chunks(chunks)
+        # Index chunks (pass source file for tracking)
+        count = self._embedding_manager.index_chunks(chunks, source_file=file_path)
         
         # Reinitialize query processor with updated collection
         self._query_processor = QueryProcessor(
@@ -163,10 +170,26 @@ class QueryAgent:
             conversation_history = session_manager.get_history(session_id, max_messages=10)
         
         # Determine response
+        # For short queries with matches, even if below threshold, 
+        # still try to generate a response if we have any matches
         if not query_result.meets_threshold:
-            response_text = self._llm_client.get_not_found_response()
-            status = "not_found"
-            llm_time = 0.0
+            # If we have matches but they're below threshold, still use them for short queries
+            query_length = len(user_query.split())
+            if query_length <= 2 and query_result.matches:
+                logger.info(f"Short query '{user_query}' below threshold but has matches, using them anyway")
+                # Use the matches even though below threshold
+                llm_result = self._llm_client.generate(
+                    user_query,
+                    query_result.context,
+                    conversation_history=conversation_history
+                )
+                response_text = llm_result["response"]
+                llm_time = llm_result["generation_time"]
+                status = "success"
+            else:
+                response_text = self._llm_client.get_not_found_response()
+                status = "not_found"
+                llm_time = 0.0
         else:
             llm_result = self._llm_client.generate(
                 user_query, 
@@ -235,5 +258,12 @@ class QueryAgent:
         
         if has_data:
             status["chunks_count"] = self._embedding_manager.get_collection_count()
+            
+            # Get indexed file information
+            file_info = self._embedding_manager.get_indexed_file_info()
+            if file_info:
+                status["indexed_file"] = file_info.get("source_file")
+                status["indexed_file_path"] = file_info.get("source_path")
+                status["indexed_at"] = file_info.get("indexed_at")
         
         return status
